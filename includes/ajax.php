@@ -684,6 +684,7 @@ class Ajax {
 		$amount      = floatval($input['amount']);
 		$description = isset($input['description']) ? mphb_clean($input['description']) : '';
 		$paymentMethodId = isset($input['paymentMethodId']) ? $input['paymentMethodId'] : null;
+        $stripeAccount = $input['stripeAccount'];
 
 		$currency  = MPHB()->settings()->currency()->getCurrencyCode();
 		$stripeApi = MPHB()->gatewayManager()->getGateway('stripe')->getApi();
@@ -699,7 +700,7 @@ class Ajax {
 
 		$idempotencyKey = isset($input['idempotencyKey']) ? $input['idempotencyKey'] : '';
 
-		$response = $stripeApi->createPaymentIntent($amount, $description, $currency, array('idempotency_key' => $idempotencyKey), $paymentMethodId);
+		$response = $stripeApi->createPaymentIntent($amount, $description, $currency, array('stripe_account' => $stripeAccount, 'idempotency_key' => $idempotencyKey), $paymentMethodId);
 
 		if (is_wp_error($response)) {
 			wp_send_json_error(array(

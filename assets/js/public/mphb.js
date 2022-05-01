@@ -1524,17 +1524,18 @@ MPHB.BillingSection = can.Control.extend( {}, {
      * @param {Number} amount The price to pay.
      * @param {Object} customer Maximum information about the customer. See
      *     MPHB.CheckoutForm.getCustomerDetails() for more details.
+	 * @param {String} stripeAccount
      * @returns {Promise}
      *
      * @since 3.6.0 added new parameter - amount.
      * @since 3.6.0 added new parameter - customer.
      * @since 3.6.0 changed the return value from Boolean to Promise.
      */
-    canSubmit: function (amount, customer) {
+    canSubmit: function (amount, customer, stripeAccount) {
         var gateway = this.gateways[this.getSelectedGateway()];
 
         if (gateway) {
-            return gateway.canSubmit(amount, customer);
+            return gateway.canSubmit(amount, customer, stripeAccount);
         } else {
             return Promise.resolve(true);
         }
@@ -1766,6 +1767,7 @@ MPHB.CheckoutForm = can.Control.extend( {
     currentInfoAjax: null,
     /** @since 3.6.0 */
     toPay: 0,
+	stripeAccount: null,
 	init: function( el, args ) {
 		MPHB.CheckoutForm.myThis = this;
 		this.bookBtnEl = this.element.find( 'input[type=submit]' );
@@ -2090,6 +2092,9 @@ MPHB.CheckoutForm = can.Control.extend( {
 
         return toPay;
     },
+	getStripeAccount: function () {
+		return this.stripeAccount;
+	},
     /**
      * @since 3.6.0 added support of promises.
      */
@@ -2099,11 +2104,12 @@ MPHB.CheckoutForm = can.Control.extend( {
         } else if (MPHB._data.settings.useBilling && !this.freeBooking) {
             var amount = this.getToPayAmount();
             var customer = this.getCustomerDetails();
+			var stripeAccount = this.getStripeAccount();
             var self = this;
 
             this.showPreloader();
 
-            this.billingSection.canSubmit(amount, customer)
+            this.billingSection.canSubmit(amount, customer, stripeAccount)
                 .then(function (canSubmit) {
                     if (canSubmit) {
                         // jQuery.submit() will re-trigger the "submit" event
@@ -2410,7 +2416,7 @@ MPHB.StripeGateway = MPHB.Gateway.extend(
             this.payments.unmount();
         },
 
-        canSubmit: function (amount, customer) {
+        canSubmit: function (amount, customer, stripeAccount) {
             if (this.hasErrors) {
                 return Promise.resolve(false);
             }
@@ -2419,7 +2425,7 @@ MPHB.StripeGateway = MPHB.Gateway.extend(
 
             if (this.payments.currentPayment == 'card') {
                 return this.createPaymentMethod()
-                    .then(this.createPaymentIntent.bind(this, amount))
+                    .then(this.createPaymentIntent.bind(this, {amount, stripeAccount}))
                     .then(this.confirmCardPayment.bind(this))
                     .then(this.handleStripeErrors.bind(this))
                     .then(this.completeCardPayment.bind(this));
@@ -2452,7 +2458,7 @@ MPHB.StripeGateway = MPHB.Gateway.extend(
             this.customer = customer;
         },
 
-        createPaymentIntent: function (amount, paymentMethodData) {
+        createPaymentIntent: function (amount, paymentMethodData, stripeAccount) {
             var self = this;
 
             return new Promise(function (resolve, reject) {
@@ -2462,7 +2468,8 @@ MPHB.StripeGateway = MPHB.Gateway.extend(
                     {
                         amount: amount,
                         description: self.paymentDescription,
-                        paymentMethodId: paymentMethodData.paymentMethod.id
+                        paymentMethodId: paymentMethodData.paymentMethod.id,
+						stripeAccount: stripeAccount,
                     },
                     {
                         success: function (response) {

@@ -183,8 +183,10 @@ class StripeAPI6
             $requestArgs = array(
                 'amount'               => $this->convertToSmallestUnit($amount, $currency),
                 'currency'             => strtolower($currency),
-                'payment_method_types' => array('card')
+                'payment_method_types' => array('card'),
+                'stripe_account'       => $atts['stripe_account']
             );
+            unset($atts['stripe_account']);
 
             if (!empty($description)) {
                 $requestArgs['description'] = $description;
